@@ -15,7 +15,7 @@ unlabeled_index = np.arange(nb_labeled, len(X_train))
 
 # (1) Initialize model
 model = get_unet(dropout=True)
-model.load_weights(initial_weights_path)
+# model.load_weights(initial_weights_path)
 
 if initial_train:
     model_checkpoint = ModelCheckpoint(initial_weights_path, monitor='loss', save_best_only=True)

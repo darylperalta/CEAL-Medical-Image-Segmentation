@@ -7,6 +7,8 @@ import numpy as np
 import cv2
 
 from constants import *
+data_path = '/home/daryl/CEAL-Medical-Image-Segmentation/train'
+masks_path = '/home/daryl/CEAL-Medical-Image-Segmentation/gt'
 
 
 def preprocessor(input_img):
@@ -36,15 +38,26 @@ def create_train_data():
     imgs = np.ndarray((total, 1, image_rows, image_cols), dtype=np.uint8)
     imgs_mask = np.ndarray((total, 1, image_rows, image_cols), dtype=np.uint8)
 
-    for image_name in images:
+    for i in range(total):
+        image_name = images[i]
         img = cv2.imread(os.path.join(data_path, image_name), cv2.IMREAD_GRAYSCALE)
-        img = cv2.resize(img, (image_rows, image_cols), interpolation=cv2.INTER_CUBIC)
+        # img = cv2.resize(img, (image_rows, image_cols), interpolation=cv2.INTER_CUBIC)
+        img = cv2.resize(img, (image_cols, image_rows), interpolation=cv2.INTER_CUBIC)
+
+        # cv2.imshow('img', img)
+        # cv2.waitKey()
         img = np.array([img])
+        # print('img shape', img.shape)
+        # print('imgs shape', imgs.shape)
         imgs[i] = img
 
-    for image_mask_name in masks:
+    # for image_mask_name in masks:
+    for i in range(total):
+        image_mask_name = masks[i]
         img_mask = cv2.imread(os.path.join(masks_path, image_mask_name), cv2.IMREAD_GRAYSCALE)
-        img_mask = cv2.resize(img_mask, (image_rows, image_cols), interpolation=cv2.INTER_CUBIC)
+        # img_mask = cv2.resize(img_mask, (image_rows, image_cols), interpolation=cv2.INTER_CUBIC)
+        img_mask = cv2.resize(img_mask, (image_cols, image_rows), interpolation=cv2.INTER_CUBIC)
+
         img_mask = np.array([img_mask])
         imgs_mask[i] = img_mask
 
@@ -58,8 +71,11 @@ def load_train_data():
     :return: [X_train, y_train] numpy arrays containing the training data and their respective masks.
     """
     print("\nLoading train data...\n")
-    X_train = np.load(gzip.open('skin_database/imgs_train.npy.gz'))
-    y_train = np.load(gzip.open('skin_database/imgs_mask_train.npy.gz'))
+    # X_train = np.load(gzip.open('skin_database/imgs_train.npy.gz'))
+    # y_train = np.load(gzip.open('skin_database/imgs_mask_train.npy.gz'))
+
+    X_train = np.load('imgs_train.npy')
+    y_train = np.load('imgs_mask_train.npy')
 
     X_train = preprocessor(X_train)
     y_train = preprocessor(y_train)
