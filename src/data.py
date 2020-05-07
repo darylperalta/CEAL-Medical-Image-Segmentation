@@ -33,16 +33,22 @@ def create_train_data():
 
     images = os.listdir(data_path)
     masks = os.listdir(masks_path)
+    images.sort()
+    masks.sort()
     total = len(images)
 
     imgs = np.ndarray((total, 1, image_rows, image_cols), dtype=np.uint8)
     imgs_mask = np.ndarray((total, 1, image_rows, image_cols), dtype=np.uint8)
+
+    print('images[]', images[0:10])
+    print('masks[]', masks[0:10])
 
     for i in range(total):
         image_name = images[i]
         img = cv2.imread(os.path.join(data_path, image_name), cv2.IMREAD_GRAYSCALE)
         # img = cv2.resize(img, (image_rows, image_cols), interpolation=cv2.INTER_CUBIC)
         img = cv2.resize(img, (image_cols, image_rows), interpolation=cv2.INTER_CUBIC)
+        # print('img shape', img.shape)
 
         # cv2.imshow('img', img)
         # cv2.waitKey()
@@ -92,6 +98,16 @@ def load_train_data():
     y_train /= 255.  # scale masks to [0, 1]
     return X_train, y_train
 
+def get_data_mean():
+    X_train = np.load('imgs_train.npy')
+    y_train = np.load('imgs_mask_train.npy')
+
+    X_train = X_train.astype('float32')
+
+    mean = np.mean(X_train)  # mean for data centering
+    std = np.std(X_train)  # std for data normalization
+
+    return mean, std
 
 if __name__ == '__main__':
     create_train_data()
