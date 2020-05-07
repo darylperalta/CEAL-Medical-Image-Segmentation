@@ -19,23 +19,29 @@ mean_data, std_data = get_data_mean()
 # model.load_weights(initial_weights_path)
 model.load_weights(global_path + "models/active_model10.h5")
 print('input shape', X_train.shape)
-out = model.predict(X_train[0:1])
-print(np.max(X_train))
-print(X_train.dtype)
-
-x_show = ((X_train[0]*std_data) + mean_data).astype(np.uint8)
-print(x_show.shape)
-gt_show = ((y_train[0]*255)).astype(np.uint8)
-print(x_show.shape)
-pred_show = ((out[0]*255)).astype(np.uint8)
 
 
-cv2.imshow('input', x_show[0])
-cv2.waitKey()
-cv2.imshow('gt', gt_show[0])
-cv2.waitKey()
-cv2.imshow('gt', pred_show[0])
-cv2.waitKey()
+test_num = 4
+
+out = model.predict(X_train[nb_labeled:nb_labeled+test_num])
+
+for i in range(test_num):
+    print(np.max(X_train))
+    print(X_train.dtype)
+
+    x_show = ((X_train[nb_labeled+i]*std_data) + mean_data).astype(np.uint8)
+    print(x_show.shape)
+    gt_show = ((y_train[nb_labeled+i]*255)).astype(np.uint8)
+    print(x_show.shape)
+    pred_show = ((out[i]*255)).astype(np.uint8)
+
+
+    cv2.imshow('input', x_show[0])
+    cv2.waitKey()
+    cv2.imshow('gt', gt_show[0])
+    cv2.waitKey()
+    cv2.imshow('pred', pred_show[0])
+    cv2.waitKey()
 # if initial_train:
 #     model_checkpoint = ModelCheckpoint(initial_weights_path, monitor='loss', save_best_only=True)
 #
