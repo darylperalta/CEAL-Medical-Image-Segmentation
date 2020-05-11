@@ -143,6 +143,7 @@ def most_uncertain_index(uncertain, nb_most_uncertain, rate):
         data = np.concatenate((data, interval(uncertain, histo[1][index[i]], histo[1][index[i] + 1])))
 
     np.random.shuffle(data)
+    print('most uncertain',nb_most_uncertain)
     return data[0:nb_most_uncertain]
 
 
@@ -158,6 +159,8 @@ def get_oracle_index(uncertain, nb_no_detections, nb_random, nb_most_uncertain, 
     """
     return np.concatenate((no_detections_index(uncertain, nb_no_detections), random_index(uncertain, nb_random),
                            most_uncertain_index(uncertain, nb_most_uncertain, rate)))
+    # return most_uncertain_index(uncertain, nb_most_uncertain, rate)
+    # return no_detections_index(uncertain, nb_no_detections)
 
 
 def compute_dice_coef(y_true, y_pred):
@@ -203,6 +206,16 @@ def compute_train_sets(X_train, y_train, labeled_index, unlabeled_index, weights
     print("Computing log predictions ...\n")
     predictions = predict(X_train[unlabeled_index], modelPredictions)
 
+    for index in range(0, 10):
+        sample = X_train[unlabeled_index[index]].reshape([1, 1, img_rows, img_cols])
+        sample_prediction = cv2.threshold(predictions[index], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
+        #print(sample.shape, sample_prediction.shape, y_train[unlabeled_index[index]][0].shape)
+
+        # cv2.imwrite("./outputs/pred_{:03d}_{:02d}.png".format(iteration, index), sample_prediction[0])
+        # cv2.imwrite("./outputs/sample_{:03d}_{:02d}.png".format(iteration, index), sample[0][0])
+        # cv2.imwrite("./outputs/gt_{:03d}_{:02d}.png".format(iteration, index), y_train[unlabeled_index[index]][0])
+        #accuracy[index] = compute_dice_coef(y_train[unlabeled_index[index]][0], sample_prediction)
+
     uncertain = np.zeros(len(unlabeled_index))
     accuracy = np.zeros(len(unlabeled_index))
 
@@ -226,7 +239,8 @@ def compute_train_sets(X_train, y_train, labeled_index, unlabeled_index, weights
                                     most_uncertain_rate)
 
     oracle_rank = unlabeled_index[oracle_index]
-
+    print('oracle index', oracle_index)
+    print('oracle rank', oracle_rank)
     np.save(global_path + "ranks/oracle" + str(iteration), oracle_rank)
     np.save(global_path + "ranks/oraclelogs" + str(iteration), oracle_index)
 

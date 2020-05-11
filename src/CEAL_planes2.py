@@ -2,20 +2,20 @@ from __future__ import print_function
 
 from keras.callbacks import ModelCheckpoint
 
-from data import load_train_data
+from data_split import load_train_data_withPlanes
 from utils import *
 
 create_paths()
 log_file = open(global_path + "logs/log_file.txt", 'a')
 
 # CEAL data definition
-X_train, y_train = load_train_data()
+X_train, y_train = load_train_data_withPlanes()
 labeled_index = np.arange(0, nb_labeled)
 unlabeled_index = np.arange(nb_labeled, len(X_train))
 
 # (1) Initialize model
-model = get_unet(dropout=False)
-#model.load_weights(initial_weights_path)
+model = get_unet(dropout=True)
+# model.load_weights(initial_weights_path)
 
 if initial_train:
     model_checkpoint = ModelCheckpoint(initial_weights_path, monitor='loss', save_best_only=True)

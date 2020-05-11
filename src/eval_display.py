@@ -2,46 +2,76 @@ from __future__ import print_function
 
 from keras.callbacks import ModelCheckpoint
 
-from data import load_train_data, get_data_mean
+from data_split import load_train_data_withPlanes, get_data_mean
 from utils import *
 
 create_paths()
 log_file = open(global_path + "logs/log_file.txt", 'a')
 
 # CEAL data definition
-X_train, y_train = load_train_data()
+X_train, y_train = load_train_data_withPlanes()
 labeled_index = np.arange(0, nb_labeled)
 unlabeled_index = np.arange(nb_labeled, len(X_train))
 
 # (1) Initialize model
 model = get_unet(dropout=True)
 mean_data, std_data = get_data_mean()
-model.load_weights(initial_weights_path)
-# model.load_weights(global_path + "models/active_model10.h5")
+# model.load_weights(initial_weights_path)
+model.load_weights(global_path + "models/active_model10.h5")
 print('input shape', X_train.shape)
 
-
-test_num = 4
+test_num = 10
 
 out = model.predict(X_train[nb_labeled:nb_labeled+test_num])
+data_path = '/home/daryl/unsupervised/datasets/coco/plane_split/non_plane/'
+masks_path = '/home/daryl/unsupervised/datasets/coco/plane_split/non_plane_mask/'
+images = sorted(os.listdir(data_path))
+masks = sorted(os.listdir(masks_path))
 
-for i in range(test_num):
+import numpy as np
+#print(np.unique(out))
+#print(np.unique(y_train))
+# ids = [2770, 2832 ,2610, 2851]
+# ids = [2770, 2832, 3129, 2610 ]
+# ids = [2622, 2278, 3017] # uncertain
+# ids = [2770 2832 3129 2610 3075 2851 3135 2836 2676 2633] # complete no detected
+ids = [2770, 2832, 3129, 2610, 3075] # complete no detected
+# ids = [2001,2003,2200, 2703,2832, 2900,2905,3130,3149,3000] # test
+# ids = [3000,3001,3002,3120,3121,3122,3123,3125,3130,3149]
+for id in ids:
+
+
+    # print('filename', images[id])
     print(np.max(X_train))
     print(X_train.dtype)
+    out = model.predict(X_train[id:id+1])
 
-    x_show = ((X_train[nb_labeled+i]*std_data) + mean_data).astype(np.uint8)
+    x_show = ((X_train[id]*std_data) + mean_data).astype(np.uint8)
     print(x_show.shape)
-    gt_show = ((y_train[nb_labeled+i]*255)).astype(np.uint8)
+    print('mx0', np.max(y_train[id]))
+    gt_show = (((y_train[id])*255)).astype(np.uint8)
+    print('mx', np.max(gt_show))
     print(x_show.shape)
-    pred_show = ((out[i]*255)).astype(np.uint8)
-
-
+    pred_show = ((out[0]*255)).astype(np.uint8)
+    # print(np.unique(pred_show))
     cv2.imshow('input', x_show[0])
     cv2.waitKey()
     cv2.imshow('gt', gt_show[0])
     cv2.waitKey()
     cv2.imshow('pred', pred_show[0])
     cv2.waitKey()
+
+    cv2.imwrite('outputs/image_{}.png'.format(id), x_show[0])
+    cv2.imwrite('outputs/pred_{}.png'.format(id), pred_show[0])
+    cv2.imwrite('outputs/gt_{}.png'.format(id), gt_show[0])
+
+    # cv2.imshow('input', x_show[0])
+    # cv2.waitKey()
+    # cv2.imshow('gt', gt_show[0])
+    # cv2.waitKey()
+    # cv2.imshow('pred', pred_show[0])
+    # cv2.waitKey()
+
 # if initial_train:
 #     model_checkpoint = ModelCheckpoint(initial_weights_path, monitor='loss', save_best_only=True)
 #
