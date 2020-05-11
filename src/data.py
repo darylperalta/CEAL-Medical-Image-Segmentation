@@ -7,8 +7,8 @@ import numpy as np
 import cv2
 
 from constants import *
-data_path = '/home/daryl/CEAL-Medical-Image-Segmentation/train'
-masks_path = '/home/daryl/CEAL-Medical-Image-Segmentation/gt'
+data_path = '/home/daryl/unsupervised/CEAL-Medical-Image-Segmentation/train'
+masks_path = '/home/daryl/unsupervised/CEAL-Medical-Image-Segmentation/gt'
 
 
 def preprocessor(input_img):
