@@ -39,11 +39,12 @@ pseudo_epoch = 5
 nb_pseudo_initial = 20
 pseudo_rate = 20
 
-initial_train = True
+initial_train = False
 # initial_train = False
 
 apply_augmentation = False
-nb_initial_epochs = 20#50
+# nb_initial_epochs = 20#50
+nb_initial_epochs = 150#50
 # nb_active_epochs = 2#10
 nb_active_epochs = 6#10
-batch_size = 128
+batch_size = 32

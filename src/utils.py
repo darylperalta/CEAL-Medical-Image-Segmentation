@@ -9,8 +9,8 @@ from keras.preprocessing.image import ImageDataGenerator
 from scipy.ndimage.morphology import distance_transform_edt as edt
 
 from constants import *
-from unet import get_unet
-
+from unet import get_unet, get_unet_multi
+from data_split import  get_colored_segmentation_image
 
 def range_transform(sample):
     """
@@ -62,6 +62,84 @@ def compute_uncertain(sample, prediction, model):
     else:
         return np.sum(np.var(X, axis=0))
 
+def compute_uncertain_multi(sample, model, n_classes =14):
+    """
+    Computes uncertainty map for a given sample and its prediction for a given model, based on the
+    number of step predictions defined in constants file.
+    :param sample: input sample.
+    :param prediction: input sample prediction.
+    :param model: unet model with Dropout layers.
+    :return: uncertainty map.
+    """
+    X = np.zeros([1, img_rows, img_cols, n_classes])
+    cv2.imshow('sample', sample[0])
+    cv2.waitKey(0)
+    for t in range(nb_step_predictions):
+
+        prediction = model.predict(sample, verbose=0).reshape([1, img_rows, img_cols, n_classes])
+
+        pred_show = ((prediction[0]*255)).astype(np.uint8).argmax(axis=2)
+        pred_show_colored = get_colored_segmentation_image(pred_show, 14).astype(np.uint8)
+        cv2.imshow('pred', pred_show_colored)
+        cv2.waitKey()
+
+        X = np.concatenate((X, prediction))
+
+    X = np.delete(X, [0], 0)
+    X_var = np.var(X, axis=0)
+    print('xvar shape',X_var.shape)
+    X_var_sum = np.sum(X_var, axis = 2)
+    print('shape sum var',X_var_sum.shape)
+    print('X var max', np.max(X_var))
+    print('X var min', np.min(X_var))
+    print('X varsum max', np.max(X_var_sum))
+    print('X varsum min', np.min(X_var_sum))
+    cv2.imshow('var', (X_var_sum*255*100).astype(np.uint8))
+    cv2.waitKey()
+
+def compute_uncertain_multi_img(sample, model, n_classes =14):
+    """
+    Computes uncertainty map for a given sample and its prediction for a given model, based on the
+    number of step predictions defined in constants file.
+    :param sample: input sample.
+    :param prediction: input sample prediction.
+    :param model: unet model with Dropout layers.
+    :return: uncertainty map.
+    """
+    X = np.zeros([1, img_rows, img_cols, n_classes])
+    # cv2.imshow('sample', sample[0])
+    # cv2.waitKey(0)
+    for t in range(nb_step_predictions):
+
+        prediction = model.predict(sample, verbose=0).reshape([1, img_rows, img_cols, n_classes])
+
+        pred_show = ((prediction[0]*255)).astype(np.uint8).argmax(axis=2)
+        pred_show_colored = get_colored_segmentation_image(pred_show, 14).astype(np.uint8)
+        # cv2.imshow('pred', pred_show_colored)
+        # cv2.waitKey()
+
+        X = np.concatenate((X, prediction))
+
+    X = np.delete(X, [0], 0)
+    X_var = np.var(X, axis=0)
+    # print('xvar shape',X_var.shape)
+    X_var_sum = np.sum(X_var, axis = 2)
+    print('shape sum var',X_var_sum.shape)
+    print('X var max', np.max(X_var))
+    print('X var min', np.min(X_var))
+    print('X varsum max', np.max(X_var_sum))
+    print('X varsum min', np.min(X_var_sum))
+    # cv2.imshow('var', (X_var_sum*255*100).astype(np.uint8))
+    # cv2.waitKey()
+
+    # if (apply_edt):
+    #     # apply distance transform normalization.
+    #     var = np.var(X, axis=0)
+    #     transform = range_transform(edt(prediction))
+    #     return np.sum(var * transform)
+    #
+    # else:
+    return np.sum(np.var(X, axis=0)), (X_var_sum*255*100).astype(np.uint8)
 
 def interval(data, start, end):
     """
@@ -162,6 +240,21 @@ def get_oracle_index(uncertain, nb_no_detections, nb_random, nb_most_uncertain, 
     # return most_uncertain_index(uncertain, nb_most_uncertain, rate)
     # return no_detections_index(uncertain, nb_no_detections)
 
+def get_oracle_index_multi(uncertain, nb_no_detections, nb_random, nb_most_uncertain, rate):
+    """
+    Gives the index of the unlabeled data to annotated at specific CEAL iteration, based on their uncertainty.
+    :param uncertain: Numpy array with the overall uncertainty values of the unlabeled data.
+    :param nb_no_detections: Total of no detected samples.
+    :param nb_random: Total of random samples.
+    :param nb_most_uncertain: Total of most uncertain samples.
+    :param rate: Hash threshold to define the most uncertain area. Bin of uncertainty histogram.
+    :return: Numpy array of index.
+    """
+    # return np.concatenate((no_detections_index(uncertain, nb_no_detections), random_index(uncertain, nb_random),
+                           # most_uncertain_index(uncertain, nb_most_uncertain, rate)))
+
+    return no_detections_index(uncertain, nb_no_detections)
+
 
 def compute_dice_coef(y_true, y_pred):
     """
@@ -253,6 +346,95 @@ def compute_train_sets(X_train, y_train, labeled_index, unlabeled_index, weights
 
         np.save(global_path + "ranks/pseudo" + str(iteration), pseudo_rank)
         np.save(global_path + "ranks/pseudologs" + str(iteration), pseudo_index)
+
+        X_labeled_train = np.concatenate((X_train[labeled_index], X_train[pseudo_index]))
+        y_labeled_train = np.concatenate((y_train[labeled_index], predictions[pseudo_index]))
+
+    else:
+        X_labeled_train = np.concatenate((X_train[labeled_index])).reshape([len(labeled_index), 1, img_rows, img_cols])
+        y_labeled_train = np.concatenate((y_train[labeled_index])).reshape([len(labeled_index), 1, img_rows, img_cols])
+
+    unlabeled_index = np.delete(unlabeled_index, oracle_index, 0)
+
+    return X_labeled_train, y_labeled_train, labeled_index, unlabeled_index
+
+
+def compute_train_sets_multi(X_train, y_train, labeled_index, unlabeled_index, weights, iteration):
+    """
+    Performs the Cost-Effective Active Learning labeling step, giving the available training data for each iteration.
+    :param X_train: Overall training data.
+    :param y_train: Overall training labels. Including the unlabeled samples to simulate the oracle annotations.
+    :param labeled_index: Index of labeled samples.
+    :param unlabeled_index: Index of unlabeled samples.
+    :param weights: pre-trained unet weights.
+    :param iteration: Currently CEAL iteration.
+
+    :return: X_labeled_train: Update of labeled training data, adding the manual and pseudo annotations.
+    :return: y_labeled_train: Update of labeled training labels, adding the manual and pseudo annotations.
+    :return: labeled_index: Update of labeled index, adding the manual annotations.
+    :return: unlabeled_index: Update of labeled index, removing the manual annotations.
+
+    """
+    print("\nActive iteration " + str(iteration))
+    print("-" * 50 + "\n")
+
+    # load models
+    modelUncertain = get_unet_multi(dropout=True,channels=3,n_class=14)
+    modelUncertain.load_weights(weights)
+    modelPredictions = get_unet_multi(dropout=False,channels=3,n_class=14)
+    modelPredictions.load_weights(weights)
+
+    # predictions
+    print("Computing log predictions ...\n")
+    predictions = predict(X_train[unlabeled_index], modelPredictions)
+
+    # for index in range(0, 10):
+    #     sample = X_train[unlabeled_index[index]].reshape([1, 1, img_rows, img_cols])
+    #     sample_prediction = cv2.threshold(predictions[index], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
+        #print(sample.shape, sample_prediction.shape, y_train[unlabeled_index[index]][0].shape)
+
+        # cv2.imwrite("./outputs/pred_{:03d}_{:02d}.png".format(iteration, index), sample_prediction[0])
+        # cv2.imwrite("./outputs/sample_{:03d}_{:02d}.png".format(iteration, index), sample[0][0])
+        # cv2.imwrite("./outputs/gt_{:03d}_{:02d}.png".format(iteration, index), y_train[unlabeled_index[index]][0])
+        #accuracy[index] = compute_dice_coef(y_train[unlabeled_index[index]][0], sample_prediction)
+
+    uncertain = np.zeros(len(unlabeled_index))
+    accuracy = np.zeros(len(unlabeled_index))
+
+    print("Computing train sets ...")
+    for index in range(0, len(unlabeled_index)):
+
+        if index % 100 == 0:
+            print("completed: " + str(index) + "/" + str(len(unlabeled_index)))
+
+        sample = X_train[unlabeled_index[index]].reshape([1, img_rows, img_cols, 3])
+        print('sample', sample.shape)
+        # sample_prediction = cv2.threshold(predictions[index], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
+        # print('sample pred', sample_prediction.shape)
+        # accuracy[index] = compute_dice_coef(y_train[unlabeled_index[index]][0], sample_prediction)
+        uncertain[index] = compute_uncertain_multi(sample, modelUncertain)
+
+    np.save(global_path + "logs/uncertain" + str(iteration), uncertain)
+    # np.save(global_path + "logs/accuracy" + str(iteration), accuracy)
+
+    oracle_index = get_oracle_index_multi(uncertain, nb_no_detections, nb_random, nb_most_uncertain,
+                                    most_uncertain_rate)
+
+    oracle_rank = unlabeled_index[oracle_index]
+    print('oracle index', oracle_index)
+    print('oracle rank', oracle_rank)
+    np.save(global_path + "ranks/oracle" + str(iteration), oracle_rank)
+    np.save(global_path + "ranks/oraclelogs" + str(iteration), oracle_index)
+
+    labeled_index = np.concatenate((labeled_index, oracle_rank))
+
+    if (iteration >= pseudo_epoch):
+
+        pseudo_index = get_pseudo_index(uncertain, nb_pseudo_initial + (pseudo_rate * (iteration - pseudo_epoch)))
+        pseudo_rank = unlabeled_index[pseudo_index]
+
+        # np.save(global_path + "ranks/pseudo" + str(iteration), pseudo_rank)
+        # np.save(global_path + "ranks/pseudologs" + str(iteration), pseudo_index)
 
         X_labeled_train = np.concatenate((X_train[labeled_index], X_train[pseudo_index]))
         y_labeled_train = np.concatenate((y_train[labeled_index], predictions[pseudo_index]))
