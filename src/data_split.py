@@ -107,15 +107,16 @@ def create_train_data():
     # np.save('mscoco/planes_split/plane_imgs_mask_train.npy', imgs_mask)
     print('max_pixel for mask', pixel_max)
 
-def create_train_data_color():
+def create_train_data_color(nonplane = True):
     """
     Generate training data numpy arrays and save them into the project path
     """
-    data_path = '/home/daryl/unsupervised/datasets/coco/plane_split/non_plane/'
-    masks_path = '/home/daryl/unsupervised/datasets/coco/plane_split/non_plane_mask/'
-
-    # data_path = '/home/daryl/unsupervised/datasets/coco/plane_split/plane/'
-    # masks_path = '/home/daryl/unsupervised/datasets/coco/plane_split/plane_mask/'
+    if nonplane==True:
+        data_path = '/home/daryl/unsupervised/datasets/coco/plane_split/non_plane/'
+        masks_path = '/home/daryl/unsupervised/datasets/coco/plane_split/non_plane_mask/'
+    else:
+        data_path = '/home/daryl/unsupervised/datasets/coco/plane_split/plane/'
+        masks_path = '/home/daryl/unsupervised/datasets/coco/plane_split/plane_mask/'
 
     image_rows = 224
     image_cols = 224
@@ -128,7 +129,7 @@ def create_train_data_color():
     # imgs_mask = np.ndarray((total, channels, image_cols, image_rows), dtype=np.uint8)
 
     imgs = np.ndarray((total, image_cols, image_rows, channels), dtype=np.uint8)
-    imgs_mask = np.ndarray((total, channels, image_cols, image_rows), dtype=np.uint8)
+    imgs_mask = np.ndarray((total, 1, image_cols, image_rows), dtype=np.uint8)
 
 
     i = 0
@@ -154,20 +155,30 @@ def create_train_data_color():
         # cv2.waitKey()
         img_mask = np.array([img_mask])
         # print(image_mask_name)
-
+        # print('img_mask 1', img_mask.shape)
         # print('img_mask max',np.max(img_mask))
         if np.max(img_mask) > pixel_max:
             pixel_max = np.max(img_mask)
+        # print('img_mask 2', img_mask.shape)
+        # print('masks', imgs_mask[i].shape)
         imgs_mask[i] = img_mask
+        # print('masks 2', imgs_mask[i].shape)
         i += 1
 
     # np.save('mscoco/planes_split/nonplane_imgs_train_color.npy', imgs)
     # np.save('mscoco/planes_split/nonplane_imgs_mask_train.npy', imgs_mask)
+    # print('imgs_mask shape', imgs_mask.shape)
     imgs_mask_label = preprocessor_multi_label(imgs_mask)
-    np.save('mscoco/planes_split/nonplane_imgs_label_train.npy', imgs_mask_label)
-    # np.save('mscoco/planes_split/plane_imgs_train.npy', imgs)
-    # np.save('mscoco/planes_split/plane_imgs_mask_train.npy', imgs_mask)
-    print('max_pixel for mask', pixel_max)
+
+    if nonplane:
+        np.save('mscoco/planes_split/nonplane_imgs_train_color.npy', imgs)
+        # np.save('mscoco/planes_split/nonplane_imgs_mask_train.npy', imgs_mask)
+    # print('imgs_mask_label shape', imgs_mask_label.shape)
+        np.save('mscoco/planes_split/nonplane_imgs_label_train.npy', imgs_mask_label)
+    else:
+        np.save('mscoco/planes_split/plane_imgs_train_color.npy', imgs)
+        np.save('mscoco/planes_split/plane_imgs_label_train.npy', imgs_mask_label)
+    # print('max_pixel for mask', pixel_max)
 
 
 def display_data():
@@ -188,7 +199,7 @@ def load_train_data_multiclass():
     # y_train = np.load(gzip.open('skin_database/imgs_mask_train.npy.gz'))
 
     X_train = np.load('mscoco/planes_split/nonplane_imgs_train_color.npy')
-    y_train = np.load('mscoco/planes_split/nonplane_imgs_mask_train.npy')
+    # y_train = np.load('mscoco/planes_split/nonplane_imgs_mask_train.npy')
     y_train = np.load('mscoco/planes_split/nonplane_imgs_label_train.npy')
     X_train = preprocessor_multi(X_train)
     # y_train = preprocessor_multi_label(y_train)
@@ -341,4 +352,4 @@ def get_colored_segmentation_image(seg_arr, n_classes):
 
 if __name__ == '__main__':
     # create_train_data()
-    create_train_data_color()
+    create_train_data_color(nonplane=False)
