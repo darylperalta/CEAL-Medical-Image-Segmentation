@@ -161,9 +161,10 @@ def create_train_data_color():
         imgs_mask[i] = img_mask
         i += 1
 
-    np.save('mscoco/planes_split/nonplane_imgs_train_color.npy', imgs)
-    np.save('mscoco/planes_split/nonplane_imgs_mask_train.npy', imgs_mask)
-
+    # np.save('mscoco/planes_split/nonplane_imgs_train_color.npy', imgs)
+    # np.save('mscoco/planes_split/nonplane_imgs_mask_train.npy', imgs_mask)
+    imgs_mask_label = preprocessor_multi_label(imgs_mask)
+    np.save('mscoco/planes_split/nonplane_imgs_label_train.npy', imgs_mask_label)
     # np.save('mscoco/planes_split/plane_imgs_train.npy', imgs)
     # np.save('mscoco/planes_split/plane_imgs_mask_train.npy', imgs_mask)
     print('max_pixel for mask', pixel_max)
@@ -188,9 +189,9 @@ def load_train_data_multiclass():
 
     X_train = np.load('mscoco/planes_split/nonplane_imgs_train_color.npy')
     y_train = np.load('mscoco/planes_split/nonplane_imgs_mask_train.npy')
-
+    y_train = np.load('mscoco/planes_split/nonplane_imgs_label_train.npy')
     X_train = preprocessor_multi(X_train)
-    y_train = preprocessor_multi_label(y_train)
+    # y_train = preprocessor_multi_label(y_train)
 
     # (X_train,Y_train),(X_test,Y_test) = cifar10.load_data()
     # num_labels = len(np.unique(Y_train))
@@ -208,8 +209,8 @@ def load_train_data_multiclass():
     # y_train /= 13.  # scale masks to [0, 1]
     # y_train[ y_train != 0] = 1.
     # y_train /= 10. # since coco with limited classes, scale accordingly
-    print("LABEL DATA", np.unique(y_train))
-    print("LABEL DATA", np.max(y_train))
+    # print("LABEL DATA", np.unique(y_train))
+    # print("LABEL DATA", np.max(y_train))
 
     return X_train, y_train
 
