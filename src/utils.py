@@ -97,7 +97,40 @@ def compute_uncertain_multi(sample, model, n_classes =14):
     cv2.imshow('var', (X_var_sum*255*100).astype(np.uint8))
     cv2.waitKey()
 
-def compute_uncertain_multi_img(sample, model, n_classes =14):
+
+def detect_blobs(X_var_sum, bg_mask):
+
+    var_max = np.max(X_var_sum)
+    var_min = np.min(X_var_sum)
+    X_var_norm= (X_var_sum-var_min)/(var_max-var_min) *255
+
+    # erode bg mask
+    kernel = np.ones((5,5), np.uint8)
+    bg_erosion = cv2.erode(bg_mask, kernel, iterations=1)
+    bg_erosion = cv2.erode(bg_mask, kernel, iterations=2)
+
+    # cv2.imshow('Erosion', img_erosion)
+
+    # X_masked = X_var_norm * bg_mask
+
+    # cv2.imshow('bg_mask', (bg_mask*255).astype(np.uint8))
+    # cv2.waitKey()
+    # cv2.imshow('bg_eroded', (bg_erosion*255).astype(np.uint8))
+    # cv2.waitKey()
+
+    X_masked = X_var_norm * bg_erosion
+
+    var_max = np.max(X_masked)
+    var_min = np.min(X_masked)
+
+    print('max mask', np.max(var_max))
+    X_masked_norm= (((X_masked-var_min)/(var_max-var_min)) *255).astype(np.uint8)
+    print('max mask2', np.max(X_masked_norm))
+
+
+    return X_masked_norm
+
+def compute_uncertain_multi_img(sample, model, bg_gt, n_classes =14, is_blur = True, is_bgmask = True):
     """
     Computes uncertainty map for a given sample and its prediction for a given model, based on the
     number of step predictions defined in constants file.
@@ -107,14 +140,16 @@ def compute_uncertain_multi_img(sample, model, n_classes =14):
     :return: uncertainty map.
     """
     X = np.zeros([1, img_rows, img_cols, n_classes])
-    # cv2.imshow('sample', sample[0])
-    # cv2.waitKey(0)
+    bg_mask =bg_gt.astype(np.uint8)
+    # print('bg shape', bg_mask.shape)
+    # cv2.imshow('bg_mask', (bg_mask*255).astype(np.uint8))
+    # cv2.waitKey()
     for t in range(nb_step_predictions):
 
         prediction = model.predict(sample, verbose=0).reshape([1, img_rows, img_cols, n_classes])
 
-        pred_show = ((prediction[0]*255)).astype(np.uint8).argmax(axis=2)
-        pred_show_colored = get_colored_segmentation_image(pred_show, 14).astype(np.uint8)
+        # pred_show = ((prediction[0]*255)).astype(np.uint8).argmax(axis=2)
+        # pred_show_colored = get_colored_segmentation_image(pred_show, 14).astype(np.uint8)
         # cv2.imshow('pred', pred_show_colored)
         # cv2.waitKey()
 
@@ -123,23 +158,65 @@ def compute_uncertain_multi_img(sample, model, n_classes =14):
     X = np.delete(X, [0], 0)
     X_var = np.var(X, axis=0)
     # print('xvar shape',X_var.shape)
-    X_var_sum = np.sum(X_var, axis = 2)
+    X_var_sum = np.sum(X_var, axis = 2)/n_classes
+    if is_blur:
+        X_var_sum = cv2.GaussianBlur(X_var_sum,(5,5),0)
+
+    var_max = np.max(X_var_sum)
+    var_min = np.min(X_var_sum)
+    X_var_norm = ((X_var_sum-var_min)/(var_max-var_min)) *255
+
+
+
+    print('max dtect blob', var_max)
+
     print('shape sum var',X_var_sum.shape)
     print('X var max', np.max(X_var))
     print('X var min', np.min(X_var))
     print('X varsum max', np.max(X_var_sum))
     print('X varsum min', np.min(X_var_sum))
-    # cv2.imshow('var', (X_var_sum*255*100).astype(np.uint8))
-    # cv2.waitKey()
+    transform_input = 1 - prediction[:,:,:,0] # foreground in bg
+    transform_input[transform_input < 0.2] = 0
+    print('transform shape',transform_input.shape)
+    # transform = range_transform(edt(prediction[:,:,:,0]))
+    transform = range_transform(edt(transform_input))
 
-    # if (apply_edt):
-    #     # apply distance transform normalization.
-    #     var = np.var(X, axis=0)
-    #     transform = range_transform(edt(prediction))
-    #     return np.sum(var * transform)
-    #
-    # else:
-    return np.sum(np.var(X, axis=0)), (X_var_sum*255*100).astype(np.uint8)
+    x_transformed = (X_var_sum * transform)[0]
+    x_transformed_norm = ((x_transformed-np.min(x_transformed))/(-np.max(x_transformed)-np.min(x_transformed))) *255
+    if is_bgmask:
+        X_post = detect_blobs(X_var_sum, bg_mask)
+
+
+    else:
+        X_post = X_var_norm
+
+        # x_transformed_masked = x_transformed_norm
+    x_transformed_masked = detect_blobs(x_transformed, bg_mask)
+    # x_try = range_transform(X_var_sum)
+
+
+    # threshold
+    retval, thresholded = cv2.threshold(X_post.astype(np.uint8),127, 255, cv2.THRESH_BINARY)
+    # cv2.imshow('orig Image',X_var_norm.astype(np.uint8))
+    # cv2.waitKey(0)
+    # cv2.imshow('Thresholded Image',thresholded.astype(np.uint8))
+    # cv2.waitKey(0)
+
+    _, contours, hierarchy = cv2.findContours(thresholded.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    contour_list = []
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area > 100 :
+            contour_list.append(contour)
+
+    # input_sample = sample[0].astype(np.uint8)
+    # cv2.drawContours(input_sample, contour_list,  -1, (255,0,0), 2)
+    # cv2.imshow('Objects Detected',input_sample)
+    # cv2.waitKey(0)
+
+    return np.sum(np.var(X, axis=0)), X_var_norm.astype(np.uint8), x_transformed_masked.astype(np.uint8), X_post.astype(np.uint8), X_var_sum, contour_list
+
 
 def interval(data, start, end):
     """
