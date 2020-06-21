@@ -14,7 +14,7 @@ labeled_index = np.arange(0, nb_labeled)
 unlabeled_index = np.arange(nb_labeled, len(X_train))
 
 # (1) Initialize model
-model = get_unet_multi(dropout=True,channels=3,n_class=14)
+model = get_unet_multi(dropout=True, channels=3, n_class=14)
 # model.load_weights(initial_weights_path)
 
 if initial_train:
@@ -36,26 +36,27 @@ if initial_train:
 else:
     model.load_weights(initial_weights_path)
 
-# Active loop
-model_checkpoint = ModelCheckpoint(final_weights_path, monitor='loss', save_best_only=True)
-#
-for iteration in range(1, nb_iterations + 1):
-    if iteration == 1:
-        weights = initial_weights_path
+if active_train:
+    # Active loop
+    model_checkpoint = ModelCheckpoint(final_weights_path, monitor='loss', save_best_only=True)
+    #
+    for iteration in range(1, nb_iterations + 1):
+        if iteration == 1:
+            weights = initial_weights_path
 
-    else:
-        weights = final_weights_path
+        else:
+            weights = final_weights_path
 
-    # (2) Labeling
-    X_labeled_train, y_labeled_train, labeled_index, unlabeled_index = compute_train_sets_multi(X_train, y_train,
-                                                                                          labeled_index,
-                                                                                          unlabeled_index, weights,
-                                                                                          iteration)
-    # (3) Training
-    history = model.fit(X_labeled_train, y_labeled_train, batch_size=32, nb_epoch=nb_active_epochs, verbose=1,
-                        shuffle=True, callbacks=[model_checkpoint])
+        # (2) Labeling
+        X_labeled_train, y_labeled_train, labeled_index, unlabeled_index = compute_train_sets_multi(X_train, y_train,
+                                                                                              labeled_index,
+                                                                                              unlabeled_index, weights,
+                                                                                              iteration)
+        # (3) Training
+        history = model.fit(X_labeled_train, y_labeled_train, batch_size=32, nb_epoch=nb_active_epochs, verbose=1,
+                            shuffle=True, callbacks=[model_checkpoint])
 
-    log(history, iteration, log_file)
-    model.save(global_path + "models/active_model" + str(iteration) + ".h5")
+        log(history, iteration, log_file)
+        model.save(global_path + "models/active_model" + str(iteration) + ".h5")
 
 log_file.close()
