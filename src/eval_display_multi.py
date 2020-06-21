@@ -9,7 +9,7 @@ create_paths()
 log_file = open(global_path + "logs/log_file.txt", 'a')
 
 # CEAL data definition
-X_train, y_train = load_train_data_multiclass()
+X_train, y_train = load_train_data_multiclass(nonplanes = False)
 labeled_index = np.arange(0, nb_labeled)
 unlabeled_index = np.arange(nb_labeled, len(X_train))
 
@@ -19,7 +19,8 @@ model = get_unet_multi(dropout=False,channels=3,n_class=14)
 mean_data, std_data = get_data_mean_multi()
 model.load_weights(initial_weights_path)
 # model.load_weights(global_path + "models/active_model10.h5")
-print('input shape', X_train.shape)
+print('x shape', X_train.shape)
+print('y shape', y_train.shape)
 
 modelUncertain = get_unet_multi(dropout=True,channels=3,n_class=14)
 modelUncertain.load_weights(initial_weights_path)
@@ -42,9 +43,14 @@ import numpy as np
 # ids = [2770, 2832, 3129, 2610, 3075] # complete no detected
 # ids = [2001,2003,2200, 2703,2832, 2900,2905,3130,3149,3000] # test
 # ids = [3000,3001,3002,3120,3121,3122,3123,3125,3130,3149]
-ids = [0,1,2,3,4,6,7,8,9,10]
-for id in range(15):
-
+# ids = [0,1,2,3,4,6,7,8,9,10]
+# ids = list(range(nb_labeled, nb_labeled+30))
+ids = list(range(3100, 3130))
+# ids = list(range(2500, 2530))
+# ids = list(range(50))
+show = False
+invert_color = True
+for id in ids:
 
     # print('filename', images[id])
     print(np.max(X_train))
@@ -72,22 +78,73 @@ for id in range(15):
     # print(np.unique(pred_show))
 
     sample = X_train[id].reshape([1, img_rows, img_cols, 3])
-    _ , img_var = compute_uncertain_multi_img(sample, modelUncertain)
+    _ , img_var, img_dist, img_post, img_raw, contour_list = compute_uncertain_multi_img(sample, modelUncertain, y_train[id][:,:,0])
+    print(img_dist.shape)
+    # print('max dist', np.max(img_dist))
+    # print('min dist', np.min(img_dist))
+    print('max var', np.max(img_var))
+    print('min var', np.min(img_var))
+    print('max post', np.max(img_post))
+    print('min post', np.min(img_post))
 
-    cv2.imshow('input', x_show)
-    cv2.waitKey()
-    cv2.imshow('gt', gt_show_colored)
-    cv2.waitKey()
-    cv2.imshow('pred', pred_show_colored)
-    cv2.waitKey()
-    cv2.imshow('VAR', img_var.astype(np.uint8))
-    cv2.waitKey()
+    (minVal, maxVal, minLoc, maxLoc_var) = cv2.minMaxLoc(img_var)
+    cv2.circle(img_var, maxLoc_var, 8, (255, 0, 0), 2)
+    print('max loc normalized for variance', maxLoc_var)
+    print('variance at var',img_var[maxLoc_var[1],maxLoc_var[0]])
+    print('variance at norm',img_post[maxLoc_var[1],maxLoc_var[0]])
+    print('variance at raw',img_raw[maxLoc_var[1],maxLoc_var[0]])
+
+    (minVal, maxVal, minLoc, maxLoc_dist) = cv2.minMaxLoc(img_dist)
+    cv2.circle(img_dist, maxLoc_dist, 8, (255, 0, 0), 2)
+
+    (minVal, maxVal, minLoc, maxLoc_post) = cv2.minMaxLoc(img_post)
+    cv2.circle(img_post, maxLoc_post, 8, (255, 0, 0), 2)
+    print('max loc normalized for post processed', maxLoc_post)
+    print('variance at var',img_var[maxLoc_post[1],maxLoc_post[0]])
+    print('variance at norm',img_post[maxLoc_post[1],maxLoc_post[0]])
+    print('variance at raw',img_raw[maxLoc_post[1],maxLoc_post[0]])
+    color_with_max = x_show.copy()
+
+    cv2.circle(color_with_max, maxLoc_post, 8, (255, 0, 0), 2)
+    cv2.circle(color_with_max, maxLoc_var, 8, (0, 255, 0), 2)
+    cv2.circle(color_with_max, maxLoc_dist, 8, (0, 0, 255), 2)
+
+    cv2.drawContours(color_with_max, contour_list,  -1, (255,0,255), 2)
+    #invert_color
+    if invert_color:
+        img_var = (255-img_var)
+        img_dist = (255-img_dist)
+        img_post = (255-img_post)
+
+    if show:
+        cv2.imshow('input', x_show)
+        cv2.waitKey()
+        cv2.imshow('gt', gt_show_colored)
+        cv2.waitKey()
+        cv2.imshow('pred', pred_show_colored)
+        cv2.waitKey()
+        cv2.imshow('VAR', img_var.astype(np.uint8))
+        cv2.waitKey()
+        cv2.imshow('Dist', img_dist.astype(np.uint8))
+        cv2.waitKey()
+        cv2.imshow('post', img_post.astype(np.uint8))
+        cv2.waitKey()
+        cv2.imshow('colors with circle', color_with_max)
+        cv2.waitKey()
+    # print(img_dist.shape)
+    # im_h = cv2.hconcat([x_show, pred_show_colored, gt_show_colored, img_var, img_dist.astype(np.uint8), img_post,color_with_max])
+    im_h = cv2.hconcat([x_show, pred_show_colored, gt_show_colored, cv2.cvtColor(img_var.astype(np.uint8), cv2.COLOR_GRAY2BGR),
+    cv2.cvtColor(img_post.astype(np.uint8), cv2.COLOR_GRAY2BGR), cv2.cvtColor(img_dist.astype(np.uint8), cv2.COLOR_GRAY2BGR), color_with_max])
+
 
     cv2.imwrite('outputs/image_{}.png'.format(id), x_show)
     cv2.imwrite('outputs/pred_{}.png'.format(id), pred_show_colored)
     cv2.imwrite('outputs/gt_{}.png'.format(id), gt_show_colored)
     cv2.imwrite('outputs/var_{}.png'.format(id), img_var)
-
+    cv2.imwrite('outputs/dist_{}.png'.format(id), img_dist.astype(np.uint8))
+    cv2.imwrite('outputs/var_masked_{}.png'.format(id), img_post)
+    cv2.imwrite('outputs/color_with_max_{}.png'.format(id), color_with_max)
+    cv2.imwrite('outputs/concat_{}.png'.format(id), im_h)
 
 
     # cv2.imshow('input', x_show[0])
