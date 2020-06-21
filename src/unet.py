@@ -5,7 +5,7 @@ import numpy as np
 from keras import backend as K
 from keras.layers import Input, merge, Conv2D, MaxPooling2D, UpSampling2D, Dropout, concatenate
 from keras.models import Model
-from keras.optimizers import Adam
+from keras.optimizers import Adam, Adadelta
 
 from constants import img_rows, img_cols
 
@@ -155,7 +155,8 @@ def get_unet_multi(dropout,channels,n_class):
 
     print(model.summary())
 
-    model.compile(optimizer=Adam(lr=8e-6), loss='categorical_crossentropy', metrics=['accuracy'])
+    # model.compile(optimizer=Adam(lr=8e-6), loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=Adadelta(), loss='categorical_crossentropy', metrics=['accuracy'])
     # model.compile(optimizer=Adam(lr=1e-5), loss='categorical_crossentropy', metrics=['accuracy'])
     # model.compile(optimizer=Adam(lr=1e-5), loss=dice_coef_loss, metrics=[dice_coef])
     return model
