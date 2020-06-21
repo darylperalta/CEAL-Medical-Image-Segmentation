@@ -189,18 +189,30 @@ def display_data():
     X_train = preprocessor(X_train)
     y_train = preprocessor(y_train)
 
-def load_train_data_multiclass():
+def load_train_data_multiclass(nonplanes = True):
     """
     Load training data from project path
     :return: [X_train, y_train] numpy arrays containing the training data and their respective masks.
     """
     print("\nLoading train data...\n")
+    print('nonplanes', nonplanes)
     # X_train = np.load(gzip.open('skin_database/imgs_train.npy.gz'))
     # y_train = np.load(gzip.open('skin_database/imgs_mask_train.npy.gz'))
+    if nonplanes:
+        X_train = np.load('mscoco/planes_split/nonplane_imgs_train_color.npy')
+        # y_train = np.load('mscoco/planes_split/nonplane_imgs_mask_train.npy')
+        y_train = np.load('mscoco/planes_split/nonplane_imgs_label_train.npy')
+    else:
+        X_train_nonplane = np.load('mscoco/planes_split/nonplane_imgs_train_color.npy')
+        Y_train_nonplane = np.load('mscoco/planes_split/nonplane_imgs_label_train.npy')
+        X_train_plane = np.load('mscoco/planes_split/plane_imgs_train_color.npy')
+        Y_train_plane = np.load('mscoco/planes_split/plane_imgs_label_train.npy')
 
-    X_train = np.load('mscoco/planes_split/nonplane_imgs_train_color.npy')
-    # y_train = np.load('mscoco/planes_split/nonplane_imgs_mask_train.npy')
-    y_train = np.load('mscoco/planes_split/nonplane_imgs_label_train.npy')
+        X_train = np.vstack((X_train_nonplane,X_train_plane))
+        y_train = np.vstack((Y_train_nonplane,Y_train_plane))
+
+
+
     X_train = preprocessor_multi(X_train)
     # y_train = preprocessor_multi_label(y_train)
 
@@ -347,7 +359,6 @@ def get_colored_segmentation_image(seg_arr, n_classes):
         seg_img[:, :, 2] += ((seg_arr_c)*(COLORS[c][2])).astype('uint8')
 
     return seg_img
-
 
 
 if __name__ == '__main__':
